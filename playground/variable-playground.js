@@ -3,7 +3,7 @@
 // 	age: 21
 // };
 
-// function updatePerson(obj){
+// function updatePerson (obj) {
 // 	// obj = {
 // 	// 	name: 'Andrew',
 // 	// 	age: 24
@@ -14,12 +14,15 @@
 // updatePerson(person);
 // console.log(person);
 
-var grades = [15,88];
+// Array Example
+var grades = [15, 88];
 
-function addGrade(gradesArr){
+function addGrades (gradesArr) {
 	gradesArr.push(55);
 	debugger;
+
+	// gradesArr = [12, 33, 99];
 }
 
-addGrade(grades);
+addGrades(grades);
 console.log(grades);
