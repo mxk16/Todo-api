@@ -1,123 +1,57 @@
-var express = require('express');
-var bodyParser = require('body-parser');
-var _ = require('underscore');
-var db = require('./db.js');
-
-var app = express();
-var PORT = process.env.PORT || 3000;
-var todos = [];
-var todoNextId = 1;
-
-app.use(bodyParser.json());
-
-app.get('/', function(req, res) {
-	res.send('Todo API Root');
+var Sequelize = require('sequelize');
+var sequelize = new Sequelize(undefined, undefined, undefined, {
+	'dialect': 'sqlite',
+	'storage': __dirname + '/basic-sqlite-database.sqlite'
 });
 
-// GET /todos?completed=false&q=work
-app.get('/todos', function(req, res) {
-	var query = req.query;
-	var where = {};
-
-	if (query.hasOwnProperty('completed') && query.completed === 'true') {
-		where.completed = true;
-	} else if (query.hasOwnProperty('completed') && query.completed === 'false') {
-		where.completed = false;
-	}
-
-	if (query.hasOwnProperty('q') && query.q.length > 0) {
-		where.description = {
-			$like: '%' + query.q + '%'
-		};
-	}
-
-	db.todo.findAll({
-		where: where
-	}).then(function(todos) {
-		res.json(todos);
-	}, function(e) {
-		res.status(500).send();
-	});
-});
-
-// GET /todos/:id
-app.get('/todos/:id', function(req, res) {
-	var todoId = parseInt(req.params.id, 10);
-
-	db.todo.findById(todoId).then(function(todo) {
-		if (!!todo) {
-			res.json(todo.toJSON());
-		} else {
-			res.status(404).send();
+var Todo = sequelize.define('todo', {
+	description: {
+		type: Sequelize.STRING,
+		allowNull: false,
+		validate: {
+			len: [1, 250]
 		}
-	}, function(e) {
-		res.status(500).send();
-	});
+	},
+	completed: {
+		type: Sequelize.BOOLEAN,
+		allowNull: false,
+		defaultValue: false
+	}
 });
 
-// POST /todos
-app.post('/todos', function(req, res) {
-	var body = _.pick(req.body, 'description', 'completed');
-
-	db.todo.create(body).then(function(todo) {
-		res.json(todo.toJSON());
-	}, function(e) {
-		res.status(400).json(e);
-	});
+var User = sequelize.define('user', {
+	email: Sequelize.STRING
 });
 
-// DELETE /todos/:id
-app.delete('/todos/:id', function(req, res) {
-	var todoId = parseInt(req.params.id, 10);
+Todo.belongsTo(User);
+User.hasMany(Todo);
 
-	db.todo.destroy({
-		where: {
-			id: todoId
-		}
-	}).then(function(rowsDeleted) {
-		if (rowsDeleted === 0) {
-			res.status(404).json({
-				error: 'No todo with id'
+sequelize.sync({
+	force: true
+}).then(function() {
+	console.log('Everything is synced');
+
+	User.findById(1).then(function (user) {
+		user.getTodos({
+			where: {
+				completed: false
+			}
+		}).then(function (todos) {
+			todos.forEach(function (todo) {
+				console.log(todo.toJSON());
 			});
-		} else {
-			res.status(204).send();
-		}
-	}, function() {
-		res.status(500).send();
+		});
 	});
-});
 
-// PUT /todos/:id
-app.put('/todos/:id', function(req, res) {
-	var todoId = parseInt(req.params.id, 10);
-	var body = _.pick(req.body, 'description', 'completed');
-	var attributes = {};
-
-	if (body.hasOwnProperty('completed')) {
-		attributes.completed = body.completed;
-	}
-
-	if (body.hasOwnProperty('description')) {
-		attributes.description = body.description;
-	}
-
-	db.todo.findById(todoId).then(function(todo) {
-		if (todo) {
-			todo.update(attributes).then(function(todo) {
-				res.json(todo.toJSON());
-			}, function(e) {
-				res.status(400).json(e);
-			});
-		} else {
-			res.status(404).send();
-		}
-	}, function() {
-		res.status(500).send();
-	});
-});
-
-db.sequelize.sync().then(function() {
-	app.listen(PORT, function() {
-		console.log('Express listening on port ' + PORT + '!');
-	});
+	// User.create({
+	// 	email: 'andrew@example.com'
+	// }).then(function () {
+	// 	return Todo.create({
+	// 		description: 'Clean yard'
+	// 	});
+	// }).then(function (todo) {
+	// 	User.findById(1).then(function (user) {
+	// 		user.addTodo(todo);
+	// 	});
+	// });
 });
